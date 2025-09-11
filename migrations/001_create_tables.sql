@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS user_subscriptions
     price      INTEGER     NOT NULL, -- фиксация цены на момент подписки
     user_id    UUID        NOT NULL,
     start_date TIMESTAMPTZ NOT NULL,
-    end_date   TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
