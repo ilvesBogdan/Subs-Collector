@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Subs Collector API
+  version: 0.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /subscriptions:
+    get:
+      summary: Список подписок
+      parameters:
+        - in: query
+          name: user_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: service_name
+          schema: { type: string }
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Создать подписку
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreate'
+      responses:
+        '201': { description: Created }
+
+  /subscriptions/{id}:
+    get:
+      summary: Получить по id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+        '404': { description: Not Found }
+    put:
+      summary: Обновить по id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscriptionCreate'
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Удалить по id
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: OK }
+
+  /subscriptions/summary:
+    get:
+      summary: Сумма за период
+      parameters:
+        - in: query
+          name: from
+          required: true
+          description: MM-YYYY
+          schema: { type: string }
+        - in: query
+          name: to
+          required: true
+          description: MM-YYYY
+          schema: { type: string }
+        - in: query
+          name: user_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: service_name
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+
+components:
+  schemas:
+    SubscriptionCreate:
+      type: object
+      properties:
+        service_name: { type: string }
+        price: { type: integer }
+        user_id: { type: string, format: uuid }
+        start_date: { type: string, description: MM-YYYY }
+        end_date: { type: string, nullable: true, description: MM-YYYY }
+      required: [service_name, price, user_id, start_date]
+
+

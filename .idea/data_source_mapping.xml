@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourcePerFileMappings">
+    <file url="file://$PROJECT_DIR$/migrations/001_create_tables.sql" value="5a7fa161-463f-4e3e-b542-079adc405513" />
+    <file url="file://$PROJECT_DIR$/migrations/001_test_data.sql" value="5a7fa161-463f-4e3e-b542-079adc405513" />
+    <file url="mock:///subscription_repository.go" value="5a7fa161-463f-4e3e-b542-079adc405513" />
+  </component>
+</project>
