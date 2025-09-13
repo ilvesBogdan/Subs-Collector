@@ -97,7 +97,7 @@ func (r *subscriptionRepository) Delete(ctx context.Context, id int) error {
 
 func (r *subscriptionRepository) List(ctx context.Context, userID string, serviceName string) ([]model.Subscription, error) {
 	sql := `SELECT us.id, sv.name AS service_name, us.price, us.user_id::text, us.start_date, us.end_date
-	      FROM user_subscriptions us JOIN services sv ON sv.id = us.service_id WHERE 1=1`
+	      FROM user_subscriptions us JOIN services sv ON sv.id = us.service_id`
 	var args []interface{}
 	idx := 1
 

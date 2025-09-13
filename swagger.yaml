@@ -98,6 +98,4 @@ components:
         user_id: { type: string, format: uuid }
         start_date: { type: string, description: MM-YYYY }
         end_date: { type: string, nullable: true, description: MM-YYYY }
-      required: [service_name, price, user_id, start_date]
-
-
+      required: [ service_name, price, user_id, start_date ]
