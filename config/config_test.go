@@ -40,13 +40,14 @@ func writeFile(t *testing.T, dir, name, content string) string {
 func TestLoadConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// .env
+	// Создаём .env
 	dotEnvContent := fmt.Sprintf("%s=%s\n%s=%s\n", keyDatabaseURL, envDBURL, keyPort, envPort)
 	dotEnvPath := writeFile(t, tmpDir, ".env", dotEnvContent)
 
 	yamlContent := fmt.Sprintf("%s: %s\n%s: %s\n", keyDatabaseURL, yamlDBURL, keyPort, yamlPort)
 	yamlPath := writeFile(t, tmpDir, "config.yaml", yamlContent)
 
+	// .env приоритет
 	cfg := Load(dotEnvPath, yamlPath)
 	if cfg.DatabaseURL != envDBURL {
 		t.Errorf("expected %s from .env, got %s", keyDatabaseURL, cfg.DatabaseURL)
@@ -55,7 +56,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("expected %s=%s from .env, got %s", keyPort, envPort, cfg.Port)
 	}
 
-	// YAML
+	// Только YAML
 	emptyDotEnv := writeFile(t, tmpDir, ".env", "")
 	cfg = Load(emptyDotEnv, yamlPath)
 	if cfg.DatabaseURL != yamlDBURL {
@@ -65,11 +66,13 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("expected %s=%s from yaml, got %s", keyPort, yamlPort, cfg.Port)
 	}
 
-	// env
+	// Только env vars
 	_ = os.Setenv(keyDatabaseURL, osEnvDBURL)
 	_ = os.Setenv(keyPort, osEnvPort)
-	defer func() { _ = os.Unsetenv(keyDatabaseURL) }()
-	defer func() { _ = os.Unsetenv(keyPort) }()
+	defer func() {
+		_ = os.Unsetenv(keyDatabaseURL)
+		_ = os.Unsetenv(keyPort)
+	}()
 
 	cfg = Load(emptyDotEnv, filepath.Join(tmpDir, "nonexistent.yaml"))
 	if cfg.DatabaseURL != osEnvDBURL {
@@ -79,14 +82,14 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("expected %s=%s from env, got %s", keyPort, osEnvPort, cfg.Port)
 	}
 
-	// default
+	// Default PORT, если не задан
 	_ = os.Unsetenv(keyPort)
 	cfg = Load(emptyDotEnv, filepath.Join(tmpDir, "nonexistent.yaml"))
 	if cfg.Port != defaultPort {
 		t.Errorf("expected default %s=%s, got %s", keyPort, defaultPort, cfg.Port)
 	}
 
-	// snake_case
+	// snake_case YAML
 	yamlSnake := fmt.Sprintf("database_url: %s\n", yamlDBURL)
 	yamlSnakePath := writeFile(t, tmpDir, "config_snake.yaml", yamlSnake)
 	cfg = Load(emptyDotEnv, yamlSnakePath)
@@ -94,20 +97,11 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("expected %s from snake_case, got %s", yamlDBURL, cfg.DatabaseURL)
 	}
 
-	// kebab-case
+	// kebab-case YAML
 	yamlKebab := fmt.Sprintf("database-url: %s\n", yamlDBURL)
 	yamlKebabPath := writeFile(t, tmpDir, "config_kebab.yaml", yamlKebab)
 	cfg = Load(emptyDotEnv, yamlKebabPath)
 	if cfg.DatabaseURL != yamlDBURL {
 		t.Errorf("expected %s from kebab-case, got %s", yamlDBURL, cfg.DatabaseURL)
 	}
-
-	// panic
-	_ = os.Unsetenv(keyDatabaseURL)
-	defer func() {
-		if r := recover(); r == nil {
-			t.Errorf("expected panic for missing %s, but no panic occurred", keyDatabaseURL)
-		}
-	}()
-	Load(filepath.Join(tmpDir, "no.env"), filepath.Join(tmpDir, "no.yaml"))
 }

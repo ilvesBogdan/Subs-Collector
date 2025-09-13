@@ -35,23 +35,23 @@ func (r *subscriptionRepository) Create(ctx context.Context, s *model.Subscripti
 	}
 
 	const sql = `INSERT INTO user_subscriptions (
-	               service_id, price, user_id, start_date
-	           ) VALUES ($1, $2, $3::uuid, $4) RETURNING id`
+	               service_id, price, user_id, start_date, end_date
+	           ) VALUES ($1, $2, $3::uuid, $4, $5) RETURNING id`
 
 	var id int
-	err = r.pool.QueryRow(ctx, sql, serviceID, s.Price, s.UserID, s.StartDate).Scan(&id)
+	err = r.pool.QueryRow(ctx, sql, serviceID, s.Price, s.UserID, s.StartDate, s.EndDate).Scan(&id)
 	return id, err
 }
 
 func (r *subscriptionRepository) GetByID(ctx context.Context, id int) (*model.Subscription, error) {
-	const sql = `SELECT us.id, sv.name AS service_name, us.price, us.user_id::text, us.start_date
+	const sql = `SELECT us.id, sv.name AS service_name, us.price, us.user_id::text, us.start_date, us.end_date
 	           FROM user_subscriptions us
 	           JOIN services sv ON sv.id = us.service_id
 	           WHERE us.id=$1`
 
 	row := r.pool.QueryRow(ctx, sql, id)
 	var m model.Subscription
-	err := row.Scan(&m.ID, &m.ServiceName, &m.Price, &m.UserID, &m.StartDate)
+	err := row.Scan(&m.ID, &m.ServiceName, &m.Price, &m.UserID, &m.StartDate, &m.EndDate)
 
 	if err != nil {
 		return nil, err
@@ -67,8 +67,8 @@ func (r *subscriptionRepository) Update(ctx context.Context, id int, s *model.Su
 	}
 
 	const sql = `UPDATE user_subscriptions 
-	               SET service_id=$1, price=$2, user_id=$3::uuid, start_date=$4, updated_at=$6 WHERE id=$7`
-	ct, err := r.pool.Exec(ctx, sql, serviceID, s.Price, s.UserID, s.StartDate, time.Now().UTC(), id)
+	               SET service_id=$1, price=$2, user_id=$3::uuid, start_date=$4, end_date=$5, updated_at=$6 WHERE id=$7`
+	ct, err := r.pool.Exec(ctx, sql, serviceID, s.Price, s.UserID, s.StartDate, s.EndDate, time.Now().UTC(), id)
 
 	if err != nil {
 		return err
@@ -96,7 +96,7 @@ func (r *subscriptionRepository) Delete(ctx context.Context, id int) error {
 }
 
 func (r *subscriptionRepository) List(ctx context.Context, userID string, serviceName string) ([]model.Subscription, error) {
-	sql := `SELECT us.id, sv.name AS service_name, us.price, us.user_id::text, us.start_date
+	sql := `SELECT us.id, sv.name AS service_name, us.price, us.user_id::text, us.start_date, us.end_date
 	      FROM user_subscriptions us JOIN services sv ON sv.id = us.service_id`
 	var args []interface{}
 	idx := 1
@@ -122,7 +122,7 @@ func (r *subscriptionRepository) List(ctx context.Context, userID string, servic
 	res := make([]model.Subscription, 0)
 	for rows.Next() {
 		var s model.Subscription
-		if err := rows.Scan(&s.ID, &s.ServiceName, &s.Price, &s.UserID, &s.StartDate); err != nil {
+		if err := rows.Scan(&s.ID, &s.ServiceName, &s.Price, &s.UserID, &s.StartDate, &s.EndDate); err != nil {
 			return nil, err
 		}
 		res = append(res, s)
@@ -143,6 +143,7 @@ func (r *subscriptionRepository) SumTotal(ctx context.Context, from, to time.Tim
 	     FROM months mo
 	     JOIN user_subscriptions us
 	       ON date_trunc('month', us.start_date) <= mo.m
+	      AND (us.end_date IS NULL OR date_trunc('month', us.end_date) >= mo.m)
 	     JOIN services sv ON sv.id = us.service_id
 	     WHERE ($3 = '' OR us.user_id = $3::uuid)
 	       AND ($4 = '' OR sv.name = $4)`

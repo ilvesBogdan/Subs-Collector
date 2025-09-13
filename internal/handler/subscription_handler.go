@@ -30,10 +30,11 @@ func (h *SubscriptionHandler) Register(mux *http.ServeMux) {
 }
 
 type subscriptionDTO struct {
-	ServiceName string `json:"service_name"`
-	Price       int    `json:"price"`
-	UserID      string `json:"user_id"`
-	StartDate   string `json:"start_date"`
+	ServiceName string  `json:"service_name"`
+	Price       int     `json:"price"`
+	UserID      string  `json:"user_id"`
+	StartDate   string  `json:"start_date"` // MM-YYYY
+	EndDate     *string `json:"end_date"`   // MM-YYYY
 }
 
 func (h *SubscriptionHandler) handleListOrCreate(w http.ResponseWriter, r *http.Request) {
@@ -81,25 +82,31 @@ func (h *SubscriptionHandler) create(w http.ResponseWriter, r *http.Request) {
 		h.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid body"})
 		return
 	}
-
 	if _, err := uuid.Parse(dto.UserID); err != nil {
 		h.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid user_id"})
 		return
 	}
 	start, err := parseData(dto.StartDate)
-
 	if err != nil {
 		h.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid start_date"})
 		return
 	}
-
+	var endPtr *time.Time
+	if dto.EndDate != nil && *dto.EndDate != "" {
+		end, err := parseData(*dto.EndDate)
+		if err != nil {
+			h.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid end_date"})
+			return
+		}
+		endPtr = &end
+	}
 	sub := model.Subscription{
 		ServiceName: dto.ServiceName,
 		Price:       dto.Price,
 		UserID:      dto.UserID,
 		StartDate:   start,
+		EndDate:     endPtr,
 	}
-
 	id, err := h.service.Create(r.Context(), &sub)
 	if err != nil {
 		h.log.Error("create error", "err", err)
@@ -133,20 +140,27 @@ func (h *SubscriptionHandler) update(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 	start, err := parseData(dto.StartDate)
-
 	if err != nil {
 		h.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid start_date"})
 		return
 	}
-
+	var endPtr *time.Time
+	if dto.EndDate != nil && *dto.EndDate != "" {
+		end, err := parseData(*dto.EndDate)
+		if err != nil {
+			h.respondJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid end_date"})
+			return
+		}
+		endPtr = &end
+	}
 	sub := model.Subscription{
 		ID:          id,
 		ServiceName: dto.ServiceName,
 		Price:       dto.Price,
 		UserID:      dto.UserID,
 		StartDate:   start,
+		EndDate:     endPtr,
 	}
-
 	if err := h.service.Update(r.Context(), id, &sub); err != nil {
 		h.log.Error("update error", "id", id, "err", err)
 		h.respondJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})

@@ -17,14 +17,18 @@ func Load(dotEnvFile, configYamlFile string) Config {
 	envMap := loadDotEnv(dotEnvFile)
 	yamlMap := loadYAML(configYamlFile)
 
-	dbURL := getString("DATABASE_URL", envMap, yamlMap, "") // required
 	port := getString("PORT", envMap, yamlMap, "8080")
 
+	dbURL := getString("DATABASE_URL", envMap, yamlMap, "")
 	if dbURL == "" {
-		panic("missing required config: DATABASE_URL")
+		user := getString("POSTGRES_USER", envMap, yamlMap, "postgres")
+		pass := getString("POSTGRES_PASSWORD", envMap, yamlMap, "postgres")
+		host := getString("POSTGRES_HOST", envMap, yamlMap, "localhost")
+		db := getString("POSTGRES_DB", envMap, yamlMap, "subs_collector")
+		dbPort := getString("POSTGRES_PORT", envMap, yamlMap, "5432")
+		dbURL = fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, pass, host, dbPort, db)
 	}
 
-	// Валидация порта uint 16 bit
 	if port != "" {
 		if n, err := strconv.ParseUint(port, 10, 16); err != nil || n == 0 {
 			panic(fmt.Errorf("invalid PORT value: %q", port))
@@ -47,6 +51,7 @@ func getString(key string, envMap, yamlMap map[string]string, defaultValue strin
 	if v, ok := yamlMap[key]; ok && v != "" {
 		return v
 	}
+
 	lc := strings.ToLower(key)
 	alts := []string{lc, toSnake(lc), toKebab(lc)}
 	for _, k := range alts {
@@ -60,7 +65,6 @@ func getString(key string, envMap, yamlMap map[string]string, defaultValue strin
 		return v
 	}
 
-	// default
 	return defaultValue
 }
 
@@ -70,9 +74,7 @@ func loadDotEnv(path string) map[string]string {
 	if err != nil {
 		return m
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
@@ -102,38 +104,28 @@ func loadDotEnv(path string) map[string]string {
 
 func loadYAML(path string) map[string]string {
 	m := make(map[string]string)
-
-	var f *os.File
-	f, _ = os.Open(path)
-
+	f, _ := os.Open(path)
 	if f == nil {
 		return m
 	}
-	defer func() {
-		_ = f.Close()
-	}()
+	defer func() { _ = f.Close() }()
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-
 		if i := strings.Index(line, "#"); i >= 0 {
 			line = line[:i]
 		}
-
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "-") {
 			continue
 		}
-
 		kv := strings.SplitN(line, ":", 2)
 		if len(kv) != 2 {
 			continue
 		}
-
 		key := strings.TrimSpace(kv[0])
 		val := strings.TrimSpace(kv[1])
-		val = strings.TrimLeft(val, " ")
 		val = trimQuotes(val)
 		if key != "" {
 			m[key] = val
