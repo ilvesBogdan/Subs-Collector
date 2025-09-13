@@ -22,7 +22,7 @@ func main() {
 	l := logger.New()
 	l.Info("start app")
 
-	cfg := config.Load()
+	cfg := config.Load(".env", "config.yaml")
 	l.Info("load configuration", "port", cfg.Port)
 
 	server, dbPoolClose := func() (*http.Server, func()) {
